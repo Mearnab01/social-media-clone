@@ -14,14 +14,7 @@ export const SocketContextProvider = ({ children }) => {
   const user = useRecoilValue(userAtom);
 
   useEffect(() => {
-    const getSocketURL = () => {
-      const isLocalhost = window.location.hostname === "localhost";
-      return isLocalhost
-        ? "http://localhost:3000"
-        : "http://192.168.0.177:5173"; // Replace with your local IP
-    };
-
-    const socket = io(getSocketURL(), {
+    const socket = io("/", {
       query: {
         userId: user?._id,
       },
