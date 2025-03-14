@@ -126,7 +126,7 @@ const Posts = ({ post, postedBy }) => {
               border="1px solid"
               borderColor="gray.light"
               maxW="400px" // Set a max width
-              maxH="500px" // Set a max height
+              //maxH="500px" // Set a max height
               mx="auto" // Center it
             >
               <Image
