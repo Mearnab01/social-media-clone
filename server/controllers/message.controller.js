@@ -105,61 +105,53 @@ export const getConversations = async (req, res) => {
     res.status(200).json(conversations);
   } catch (error) {
     res.status(500).json({ error: error.message });
+    console.log(error);
   }
 };
 
-export const deleteImgFromChat = async (req, res) => {
+//4. delete msg and img from chat
+export const deleteMessageAndImage = async (req, res) => {
   try {
-    const { messageId } = req.body; // Get message ID from request body
+    const { messageId, deleteText, deleteImage } = req.body;
     const userId = req.user._id;
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ error: "Message not found" });
+    }
     if (message.sender.toString() !== userId.toString()) {
       return res
         .status(403)
         .json({ error: "You can only delete your own messages" });
     }
-
-    // Find the message
-    const message = await Message.findById(messageId);
-    if (!message) {
-      return res.status(404).json({ error: "Message not found" });
+    if (deleteText && message.text) {
+      message.text = ""; // Clear text content
     }
+    // Handle image deletion
+    if (deleteImage && message.img) {
+      try {
+        // Extract Cloudinary public ID from URL
+        const publicId = message.img.split("/").pop().split(".")[0];
 
-    // Check if the message contains an image
-    if (!message.img) {
-      return res.status(400).json({ error: "No image found in this message" });
+        // Delete image from Cloudinary
+        await cloudinary.v2.uploader.destroy(publicId);
+        message.img = ""; // Clear image URL
+      } catch (error) {
+        console.error("Cloudinary image deletion error:", error);
+        return res
+          .status(500)
+          .json({ error: "Failed to delete image from Cloudinary" });
+      }
     }
-
-    // Extract Cloudinary public ID from URL
-    const imgUrl = message.img;
-    const publicId = imgUrl.split("/").pop().split(".")[0];
-
-    // Delete the image from Cloudinary
-    await cloudinary.uploader.destroy(publicId);
-
-    // Delete the message from MongoDB
-    await Message.findByIdAndDelete(messageId);
-
-    // Check if this was the last message in the conversation
-    const conversation = await Conversation.findById(message.conversationId);
-    if (conversation && conversation.lastMessage.img === imgUrl) {
-      // Find the latest message in the conversation
-      const lastMessage = await Message.findOne({
-        conversationId: conversation._id,
-      }).sort({ createdAt: 1 });
-
-      // Update conversation's last message
-      await Conversation.updateOne(
-        { _id: conversation._id },
-        {
-          lastMessage: lastMessage
-            ? { text: lastMessage.text, sender: lastMessage.sender }
-            : null,
-        }
-      );
+    // If both text and image are empty, delete the entire message
+    if (!message.text && !message.img) {
+      await Message.findByIdAndDelete(messageId);
+      return res.status(200).json({ message: "Message deleted successfully" });
     }
-
-    res.status(200).json({ message: "Image deleted successfully" });
+    await message.save();
+    res.status(200).json(updatedMessage);
   } catch (error) {
     res.status(500).json({ error: error.message });
+    console.log(error);
   }
 };
