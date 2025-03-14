@@ -131,8 +131,6 @@ const Posts = ({ post, postedBy }) => {
             >
               <Image
                 src={post.img}
-                w="100%" // Make it responsive
-                h="auto" // Maintain aspect ratio
                 objectFit="contain" // Ensure the whole image fits within
               />
             </Box>
