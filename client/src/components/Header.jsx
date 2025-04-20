@@ -26,6 +26,7 @@ import {
   MessageCircle,
   User2Icon,
   Menu,
+  UsersIcon,
 } from "lucide-react";
 import useLogOut from "../hooks/useLogOut";
 
@@ -33,6 +34,7 @@ const Header = () => {
   const { colorMode, toggleColorMode } = useColorMode();
   const handleLogout = useLogOut();
   const user = useRecoilValue(userAtom);
+  //console.log(user, "mobile header");
   const [isMobileNav] = useMediaQuery("(max-width: 700px)"); // Detect mobile screens
 
   return (
@@ -94,6 +96,14 @@ const Header = () => {
                     _hover={{ bg: "gray.200", color: "black", rounded: "full" }}
                   />
                 </Link>
+                <Link to={`/followers/${user.username}`}>
+                  <IconButton
+                    aria-label="Followers"
+                    icon={<UsersIcon size={24} />}
+                    variant="ghost"
+                    _hover={{ bg: "gray.200", color: "black", rounded: "full" }}
+                  />
+                </Link>
                 <IconButton
                   aria-label="Logout"
                   icon={<LogOutIcon size={24} />}
@@ -117,6 +127,8 @@ const MobileNav = () => {
   const { colorMode, toggleColorMode } = useColorMode();
   const handleLogout = useLogOut();
   const user = useRecoilValue(userAtom);
+  console.log(user, "mobile nav");
+
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (

@@ -14,6 +14,7 @@ import Header from "./components/Header";
 import CreatePost from "./components/CreatePost";
 import ChatPage from "./pages/ChatPage";
 import NotificationPage from "./pages/NotificationPage";
+import FollwersPage from "./pages/FollwersPage";
 const App = () => {
   const user = useRecoilValue(userAtom);
   const { pathname } = useLocation();
@@ -32,8 +33,12 @@ const App = () => {
           />
           <Route
             path="/update"
-            element={user ? <UpdateProfilePage /> : <Navigate to="/" />}
+            element={user ? <UpdateProfilePage /> : <Navigate to="/auth" />}
           />
+          {/*  <Route
+            path="/followers/:username"
+            element={user ? <FollwersPage /> : <Navigate to="/" />}
+          /> */}
           <Route
             path="/:username"
             element={

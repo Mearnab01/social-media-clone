@@ -90,16 +90,6 @@ const Actions = ({ post }) => {
       if (data.error) {
         return toast.error(data.error);
       }
-      console.log(data);
-      // Ensure the response includes the user's image and reply ID
-      const newReply = {
-        ...data, // Assuming `data` contains the reply object with user details
-        user: {
-          _id: user._id,
-          username: user.username,
-          profilePicture: user.profilePicture, // Ensure this is included in the response
-        },
-      };
 
       // Update the state with the new reply
       const updatedPosts = posts.map((p) => {

@@ -5,9 +5,11 @@ import toast from "react-hot-toast";
 const useFollowUnfollow = (user) => {
   const currentUser = useRecoilValue(userAtom);
   const [following, setFollowing] = useState(
-    user.followers.includes(currentUser?._id)
+    user?.followers?.includes(currentUser?._id)
   );
   const [updating, setUpdating] = useState(false);
+  console.log(user);
+
   const handlefollowUnfollow = async () => {
     if (!currentUser) {
       toast.error("Please Login to follow");
@@ -21,10 +23,12 @@ const useFollowUnfollow = (user) => {
         },
       });
       const data = await res.json();
+
       if (data.error) {
         toast.error(data.error);
       } else {
         toast.success(data.message);
+        console.log(data);
       }
       if (following) {
         user.followers.pop(); // simulate removing followers
