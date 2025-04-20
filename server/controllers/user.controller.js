@@ -93,54 +93,34 @@ export const logoutUser = (_, res) => {
 // follow unfollow user
 export const followUnfollowUser = async (req, res) => {
   try {
-    const { id } = req.params; // user to follow/unfollow
-    const currentUserId = req.user._id;
-
-    if (id === currentUserId.toString()) {
+    const { id } = req.params;
+    const currentUser = await User.findById(req.user._id);
+    const userToFollow = await User.findById(id);
+    if (id === req.user._id.toString()) {
       return res
         .status(400)
         .json({ error: "You can't follow/unfollow yourself" });
     }
-
-    const currentUser = await User.findById(currentUserId);
-    const userToFollow = await User.findById(id);
-
     if (!currentUser || !userToFollow) {
       return res.status(404).json({ error: "User not found" });
     }
-
-    const isFollowing = currentUser.following.some(
-      (userId) => userId.toString() === id
-    );
-
+    const isFollowing = currentUser.following.includes(id);
     if (isFollowing) {
-      // Unfollow
-      await User.findByIdAndUpdate(currentUserId, {
-        $pull: { following: id },
-      });
-      await User.findByIdAndUpdate(id, {
-        $pull: { followers: currentUserId },
-      });
-
-      return res
+      await User.findByIdAndUpdate(req.user._id, { $pull: { following: id } });
+      await User.findByIdAndUpdate(id, { $pull: { followers: req.user._id } });
+      res
         .status(200)
-        .json({ message: `You unfollowed ${userToFollow.username}` });
+        .json({ message: `You Unfollowed ${userToFollow.username}` });
     } else {
-      // Follow
-      await User.findByIdAndUpdate(currentUserId, {
-        $addToSet: { following: id },
+      await User.findByIdAndUpdate(req.user._id, { $push: { following: id } });
+      await User.findByIdAndUpdate(id, { $push: { followers: req.user._id } });
+      res.status(200).json({
+        message: `You are now following ${userToFollow.username}`,
       });
-      await User.findByIdAndUpdate(id, {
-        $addToSet: { followers: currentUserId },
-      });
-
-      return res
-        .status(200)
-        .json({ message: `You are now following ${userToFollow.username}` });
     }
   } catch (error) {
-    console.error("Error in followUnfollowUser:", error.message);
-    return res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
+    console.log("Error in followUnfollowUser: ", error.message);
   }
 };
 
