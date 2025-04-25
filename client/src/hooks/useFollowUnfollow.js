@@ -8,7 +8,6 @@ const useFollowUnfollow = (user) => {
     user?.followers?.includes(currentUser?._id)
   );
   const [updating, setUpdating] = useState(false);
-  console.log(user);
 
   const handlefollowUnfollow = async () => {
     if (!currentUser) {

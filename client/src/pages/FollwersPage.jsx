@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Box,
@@ -14,15 +14,41 @@ import {
   Tab,
   TabPanel,
   useColorModeValue,
+  Flex,
 } from "@chakra-ui/react";
 import useGetUserProfile from "../hooks/useGetUserProfile";
 
 const FollowersPage = () => {
   const { username } = useParams();
-  const { user, loading } = useGetUserProfile();
-  console.log(user);
+  const { loading } = useGetUserProfile();
 
-  // Use color mode value for light and dark mode
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
+
+  // Fetch followers and following data
+  const fetchData = async () => {
+    try {
+      const [followersRes, followingRes] = await Promise.all([
+        fetch(`/api/v1/users/${username}/followers`),
+        fetch(`/api/v1/users/${username}/following`),
+      ]);
+      const followersData = await followersRes.json();
+      const followingData = await followingRes.json();
+      if (followersData.success) {
+        setFollowers(followersData.followers || []);
+      }
+      if (followingData.success) {
+        setFollowing(followingData.following || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch data", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [username]);
+
   const bgColor = useColorModeValue("gray.100", "gray.800");
   const textColor = useColorModeValue("gray.700", "gray.200");
 
@@ -42,14 +68,14 @@ const FollowersPage = () => {
 
       <Tabs variant="soft-rounded" colorScheme="blue">
         <TabList mb={4}>
-          <Tab>Followers ({user?.followers?.length || 0})</Tab>
-          <Tab>Following ({user?.following?.length || 0})</Tab>
+          <Tab>Followers ({followers?.length || 0})</Tab>
+          <Tab>Following ({following?.length || 0})</Tab>
         </TabList>
 
         <TabPanels>
           {/* Followers Tab */}
           <TabPanel>
-            {user?.followers?.length > 0 ? (
+            {followers?.length > 0 ? (
               <Grid
                 templateColumns={{
                   base: "1fr",
@@ -58,7 +84,7 @@ const FollowersPage = () => {
                 }}
                 gap={4}
               >
-                {user.followers.map((follower) => (
+                {followers.map((follower) => (
                   <VStack
                     key={follower._id}
                     bg={bgColor}
@@ -66,6 +92,7 @@ const FollowersPage = () => {
                     boxShadow="md"
                     p={4}
                     spacing={3}
+                    align="center"
                   >
                     <Avatar
                       name={follower.username}
@@ -78,10 +105,20 @@ const FollowersPage = () => {
                         color={textColor}
                         _hover={{ textDecoration: "underline" }}
                       >
-                        {follower.name}
+                        @{follower.username}
                       </Text>
                     </Link>
-                    <Text color="gray.500">@{follower.username}</Text>
+                    <Text color="gray.500" fontSize="sm">
+                      {follower.postCount} Posts
+                    </Text>
+                    <Flex justify="space-evenly" w="full" fontSize="sm">
+                      <Text color="gray.500">
+                        {follower.followerCount} Followers
+                      </Text>
+                      <Text color="gray.500">
+                        {follower.followingCount} Following
+                      </Text>
+                    </Flex>
                   </VStack>
                 ))}
               </Grid>
@@ -92,7 +129,7 @@ const FollowersPage = () => {
 
           {/* Following Tab */}
           <TabPanel>
-            {user?.following?.length > 0 ? (
+            {following?.length > 0 ? (
               <Grid
                 templateColumns={{
                   base: "1fr",
@@ -101,7 +138,7 @@ const FollowersPage = () => {
                 }}
                 gap={4}
               >
-                {user.following.map((f) => (
+                {following.map((f) => (
                   <VStack
                     key={f._id}
                     bg={bgColor}
@@ -109,6 +146,7 @@ const FollowersPage = () => {
                     boxShadow="md"
                     p={4}
                     spacing={3}
+                    align="center"
                   >
                     <Avatar name={f.username} src={f.profilePic} size="lg" />
                     <Link to={`/${f.username}`}>
@@ -117,10 +155,16 @@ const FollowersPage = () => {
                         color={textColor}
                         _hover={{ textDecoration: "underline" }}
                       >
-                        {f.name}
+                        @{f.username}
                       </Text>
                     </Link>
-                    <Text color="gray.500">@{f.username}</Text>
+                    <Text color="gray.500" fontSize="sm">
+                      {f.postCount} Posts
+                    </Text>
+                    <Flex justify="space-evenly" w="full" fontSize="sm">
+                      <Text color="gray.500">{f.followerCount} Followers</Text>
+                      <Text color="gray.500">{f.followingCount} Following</Text>
+                    </Flex>
                   </VStack>
                 ))}
               </Grid>

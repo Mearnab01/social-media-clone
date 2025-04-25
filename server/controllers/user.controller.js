@@ -1,14 +1,17 @@
 import User from "../model/user.model.js";
 import Post from "../model/post.model.js";
+import { getRecipientSocketId, io } from "../socketio/socket.js";
 import bcrypt from "bcryptjs";
 import generateTokenAndSetCookie from "../utils/generateTokenAndSetCookie.js";
 import mongoose from "mongoose";
 import { v2 as cloudinary } from "cloudinary";
+import { createNotification } from "./notification.controller.js";
+import Notification from "../model/notification.model.js";
 // user signup
 export const userSignup = async (req, res) => {
   try {
     const { name, username, email, password } = req.body;
-    const user = await User.findOne({ $or: [{ email }, { username }] });
+
     if (!name || !username || !email || !password) {
       return res.status(400).json({ error: "All fields are required" });
     }
@@ -17,11 +20,15 @@ export const userSignup = async (req, res) => {
         .status(400)
         .json({ error: "Password must be at least 8 characters" });
     }
-    if (user) {
+
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    if (existingUser) {
       return res.status(400).json({ error: "User already exists" });
     }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+
     const newUser = new User({
       name,
       email,
@@ -30,21 +37,23 @@ export const userSignup = async (req, res) => {
     });
     await newUser.save();
 
-    if (newUser) {
-      generateTokenAndSetCookie(newUser._id, res);
-      res.status(201).json({
-        message: "User created successfully",
-        _id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        username: newUser.username,
-      });
-    } else {
-      res.status(400).json({ message: "Failed to create user" });
+    if (!newUser) {
+      return res.status(400).json({ error: "Failed to create user" });
     }
+
+    generateTokenAndSetCookie(newUser._id, res);
+    res.status(201).json({
+      message: "User created successfully",
+      _id: newUser._id,
+      name: newUser.name,
+      email: newUser.email,
+      username: newUser.username,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.messsage });
-    console.log("Error in user signup", error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    }
+    console.error("Error in user signup", error);
   }
 };
 
@@ -117,6 +126,17 @@ export const followUnfollowUser = async (req, res) => {
       res.status(200).json({
         message: `You are now following ${userToFollow.username}`,
       });
+      const follw_noti = await createNotification(
+        "follow",
+        currentUser,
+        id,
+        `${currentUser.username} started following you`
+      );
+
+      const recipientSocketId = getRecipientSocketId(id);
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit("newNotification", follw_noti);
+      }
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -235,5 +255,123 @@ export const getSuggestedUser = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
     console.log("Error in getSuggestedUser: ", error.message);
+  }
+};
+
+// get all followers of a user by username
+export const getFollowers = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await User.findOne({ username });
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const followersData = await User.find(
+      { _id: { $in: user.followers } },
+      "username profilePic bio posts followers following"
+    ).lean();
+
+    const followers = followersData.map((f) => ({
+      _id: f._id,
+      username: f.username,
+      profilePic: f.profilePic,
+      bio: f.bio,
+      postCount: f.posts?.length || 0,
+      followerCount: f.followers?.length || 0,
+      followingCount: f.following?.length || 0,
+    }));
+
+    res.status(200).json({ success: true, followers });
+  } catch (err) {
+    console.error("Error in getFollowers:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// get all following of a user by username
+export const getFollowing = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await User.findOne({ username });
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const followingData = await User.find(
+      { _id: { $in: user.following } },
+      "username profilePic bio posts followers following"
+    ).lean();
+
+    const following = followingData.map((f) => ({
+      _id: f._id,
+      username: f.username,
+      profilePic: f.profilePic,
+      bio: f.bio,
+      postCount: f.posts?.length || 0,
+      followerCount: f.followers?.length || 0,
+      followingCount: f.following?.length || 0,
+    }));
+
+    res.status(200).json({ success: true, following });
+  } catch (err) {
+    console.error("Error in getFollowing:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// delete user account
+export const deleteAccount = async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    if (!username) {
+      return res.status(400).json({ error: "Username is required" });
+    }
+
+    const user = await User.findOne({ username });
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // 1. Notify followers
+    for (const followerId of user.followers) {
+      const farewellNoti = await createNotification(
+        "account-deleted",
+        followerId,
+        user._id,
+        `${user.username} has deleted their account.`
+      );
+
+      const recipientSocketId = getRecipientSocketId(followerId);
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit("newNotification", farewellNoti);
+      }
+    }
+    const deletedNotifications = await Notification.deleteMany({
+      $or: [
+        { fromUser: user._id }, // Notifications where the deleted user is the target
+        { toUser: user._id }, // Notifications where the deleted user is the actor
+      ],
+    });
+
+    // 2. Clean up user-related data
+    await Post.deleteMany({ postedBy: user._id });
+    await Post.updateMany({}, { $pull: { replies: { userId: user._id } } });
+    await User.updateMany(
+      { followers: user._id },
+      { $pull: { followers: user._id } }
+    );
+    await User.updateMany(
+      { following: user._id },
+      { $pull: { following: user._id } }
+    );
+
+    // 3. Delete the user
+    await User.findByIdAndDelete(user._id);
+
+    res
+      .status(200)
+      .json({ message: "User account deleted and followers notified." });
+  } catch (err) {
+    console.error("Account deletion failed:", err);
+    res.status(500).json({ error: "Failed to delete account." });
   }
 };

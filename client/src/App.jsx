@@ -35,10 +35,10 @@ const App = () => {
             path="/update"
             element={user ? <UpdateProfilePage /> : <Navigate to="/auth" />}
           />
-          {/*  <Route
+          <Route
             path="/followers/:username"
             element={user ? <FollwersPage /> : <Navigate to="/" />}
-          /> */}
+          />
           <Route
             path="/:username"
             element={

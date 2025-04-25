@@ -35,7 +35,7 @@ const Actions = ({ post }) => {
       toast.error("Loggin First");
     }
     try {
-      const res = await fetch(`/api/v1/posts/like-dislike/${post._id}`, {
+      const res = await fetch(`/api/v1/posts/like-dislike/${post?._id}`, {
         method: "PUT",
         headers: {
           "content-type": "application/json",
@@ -79,7 +79,7 @@ const Actions = ({ post }) => {
       return toast.error("You must be logged in to reply");
     }
     try {
-      const res = await fetch(`/api/v1/posts/post-reply/${post._id}`, {
+      const res = await fetch(`/api/v1/posts/post-reply/${post?._id}`, {
         method: "PUT",
         headers: {
           "content-type": "application/json",
@@ -94,7 +94,7 @@ const Actions = ({ post }) => {
       // Update the state with the new reply
       const updatedPosts = posts.map((p) => {
         if (p._id === post._id) {
-          return { ...p, replies: [...p.replies, data] };
+          return { ...p, replies: [data, ...p.replies] };
         }
         return p;
       });

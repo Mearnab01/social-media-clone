@@ -12,7 +12,7 @@ const useGetUserProfile = () => {
       try {
         const res = await fetch(`/api/v1/users/user-profile/${username}`);
         const data = await res.json();
-        //console.log(data);
+        console.log(data);
         if (data.error) {
           toast.error(data.error);
         }

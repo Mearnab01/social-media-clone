@@ -11,10 +11,10 @@ const Comment = ({ reply, onDelete, lastReply }) => {
   const formattedTime = reply.createdAt
     ? `Commented ${formatDistanceToNow(new Date(reply.createdAt), {
         addSuffix: true,
-      })} ago`
+      })}`
     : "Just now";
   //console.log(formattedTime);
-  console.log(reply);
+  //console.log(reply);
 
   return (
     <>

@@ -28,7 +28,7 @@ const PostPage = () => {
   const currentUser = useRecoilValue(userAtom);
 
   const currentPost = posts.find((post) => post?._id === pid);
-  //console.log(currentPost);
+  console.log(currentPost);
   useEffect(() => {
     const getPost = async () => {
       try {
@@ -158,8 +158,20 @@ const PostPage = () => {
         overflow={"hidden"}
         border={"1px solid"}
         borderColor={"gray.light"}
+        boxShadow={"md"}
+        w={currentPost.img !== null ? "400px" : ""}
+        h={currentPost.img !== null ? "400px" : ""}
+        mx={"auto"}
       >
-        {currentPost.img && <Image src={currentPost.img} w={"full"} />}
+        {currentPost.img && (
+          <Image
+            src={currentPost.img}
+            w="100%"
+            h="100%"
+            objectFit="contain"
+            alt="Post image"
+          />
+        )}
       </Box>
 
       <Flex gap={3} my={3}>

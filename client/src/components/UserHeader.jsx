@@ -18,6 +18,7 @@ import userAtom from "../atoms/userAtom";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import useFollowUnfollow from "../hooks/useFollowUnfollow";
+import DeleteAccountButton from "./DeleteAccountButton";
 
 const UserHeader = ({ user }) => {
   const currentUser = useRecoilValue(userAtom);
@@ -86,9 +87,18 @@ const UserHeader = ({ user }) => {
       </Flex>
       <Text>{user.bio ? user.bio : "My Bio here..."}</Text>
       {currentUser?._id === user?._id && (
-        <Link to="/update">
-          <Button>Update Profile</Button>
-        </Link>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Link to="/update">
+            <Button>Update Profile</Button>
+          </Link>
+          <DeleteAccountButton username={user.username} />
+        </div>
       )}
       {currentUser?._id !== user?._id && user && (
         <Button

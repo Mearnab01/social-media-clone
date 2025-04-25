@@ -1,6 +1,9 @@
 import Post from "../model/post.model.js";
 import User from "../model/user.model.js";
 import { v2 as cloudinary } from "cloudinary";
+import { io, getRecipientSocketId } from "../socketio/socket.js";
+import Notification from "../model/notification.model.js";
+import { createNotification } from "./notification.controller.js";
 // create post
 export const createPost = async (req, res) => {
   try {
@@ -122,6 +125,7 @@ export const likeDislikePost = async (req, res) => {
       res.status(404).json({ error: "No post found" });
     }
     const userLikedPost = await post.likes.includes(userId);
+    const postOwnerId = post.postedBy._id.toString();
     if (userLikedPost) {
       //unliked post
       await Post.updateOne({ _id: postId }, { $pull: { likes: userId } });
@@ -137,6 +141,19 @@ export const likeDislikePost = async (req, res) => {
         success: true,
         message: `${req.user.username} liked this post`,
       });
+    }
+    if (!userLikedPost) {
+      const liked_notification = await createNotification(
+        "like",
+        userId,
+        postOwnerId,
+        `${req.user.username} liked your post`,
+        postId
+      );
+      const recipientSocketId = getRecipientSocketId(postOwnerId);
+      if (recipientSocketId && postOwnerId !== userId.toString()) {
+        io.to(recipientSocketId).emit("notify", liked_notification);
+      }
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -162,9 +179,22 @@ export const replyToUser = async (req, res) => {
       return res.status(404).json({ error: "Post not found" });
     }
     const reply = { userId, text, userProfilePic, username, commentAt };
-    post.replies.push(reply);
+    //post.replies.push(reply);
+    post.replies.unshift(reply);
     await post.save();
 
+    const postOwnerId = post.postedBy._id.toString();
+    const commnent_notification = await createNotification(
+      "comment",
+      userId,
+      postOwnerId,
+      `${username} commented on your post ${text}`,
+      postId
+    );
+    const recipientSocketId = getRecipientSocketId(postOwnerId);
+    if (recipientSocketId && postOwnerId !== userId.toString()) {
+      io.to(recipientSocketId).emit("notify", commnent_notification);
+    }
     res.status(200).json(reply);
   } catch (error) {
     res.status(500).json({ error: error.message });

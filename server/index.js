@@ -12,6 +12,7 @@ import { app, server } from "./socketio/socket.js";
 import userRoutes from "./routes/user.routes.js";
 import postRoutes from "./routes/post.routes.js";
 import messageRoutes from "./routes/message.routes.js";
+import notificationsRoutes from "./routes/notification.routes.js";
 import job from "./cron/cron.js";
 
 dotenv.config();
@@ -38,6 +39,7 @@ cloudinary.config({
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/posts", postRoutes);
 app.use("/api/v1/messages", messageRoutes);
+app.use("/api/v1/notifications", notificationsRoutes);
 //app.listen(port, () => {    //change app -> server at very last
 
 if (process.env.NODE_ENV === "production") {
