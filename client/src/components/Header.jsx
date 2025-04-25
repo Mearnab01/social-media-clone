@@ -180,6 +180,15 @@ const MobileNav = () => {
                   Profile
                 </Button>
               </Link>
+              <Link to={`/followers/${user.username}`} onClick={onClose}>
+                <Button
+                  leftIcon={<UsersIcon size={20} />}
+                  variant="ghost"
+                  w="full"
+                >
+                  My Connection
+                </Button>
+              </Link>
               <Link to="/chat" onClick={onClose}>
                 <Button
                   leftIcon={<MessageCircle size={20} />}
