@@ -6,8 +6,6 @@ import toast from "react-hot-toast";
 const DeleteAccountButton = ({ username }) => {
   const navigate = useNavigate();
 
-  console.log(username);
-
   const handleDelete = async () => {
     const confirmDelete = window.confirm(
       "Are you sure? This cannot be undone."
@@ -18,7 +16,7 @@ const DeleteAccountButton = ({ username }) => {
       const response = await fetch(`/api/v1/users/${username}/delete-account`, {
         method: "DELETE",
       });
-      console.log(response);
+      //console.log(response);
 
       if (!response.ok) {
         throw new Error("Failed to delete account.");

@@ -7,6 +7,8 @@ import mongoose from "mongoose";
 import { v2 as cloudinary } from "cloudinary";
 import { createNotification } from "./notification.controller.js";
 import Notification from "../model/notification.model.js";
+import Message from "../model/message.model.js";
+import Conversation from "../model/conversation.model.js";
 // user signup
 export const userSignup = async (req, res) => {
   try {
@@ -345,7 +347,7 @@ export const deleteAccount = async (req, res) => {
         io.to(recipientSocketId).emit("newNotification", farewellNoti);
       }
     }
-    const deletedNotifications = await Notification.deleteMany({
+    await Notification.deleteMany({
       $or: [
         { fromUser: user._id }, // Notifications where the deleted user is the target
         { toUser: user._id }, // Notifications where the deleted user is the actor
@@ -363,7 +365,15 @@ export const deleteAccount = async (req, res) => {
       { following: user._id },
       { $pull: { following: user._id } }
     );
+    // 5. Delete conversations and messages
+    const conversations = await Conversation.find({
+      participants: user._id,
+    });
 
+    const conversationIds = conversations.map((conv) => conv._id);
+
+    await Message.deleteMany({ conversationId: { $in: conversationIds } });
+    await Conversation.deleteMany({ _id: { $in: conversationIds } });
     // 3. Delete the user
     await User.findByIdAndDelete(user._id);
 

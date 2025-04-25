@@ -15,19 +15,24 @@ const io = new Server(server, {
   },
   transports: ["websocket", "polling"],
 });
+
 export const getRecipientSocketId = (recipientId) => {
   return userSocketMap[recipientId];
 };
-const userSocketMap = {}; // hashmap
+
+const userSocketMap = {};
 io.on("connection", (socket) => {
   console.log(`User connected ${socket.id}`);
 
-  const userId = socket.handshake.query.userId; //from socket context frontend
-  if (userId && userId !== "undefined") {
+  const userId = socket.handshake.query.userId;
+  if (userId) {
+    socket.join(userId);
+  }
+  if (userId != "undefined") {
     userSocketMap[userId] = socket.id;
   }
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
-
+  // **markMsgAsRead**
   socket.on("markMsgAsRead", async ({ conversationId, userId }) => {
     try {
       await Message.updateMany(
@@ -41,71 +46,6 @@ io.on("connection", (socket) => {
       io.to(userSocketMap[userId]).emit("messageSeen", { conversationId });
     } catch (error) {
       console.log(error, "from socket.js");
-    }
-  });
-  socket.on("likePost", async ({ postId, likedBy }) => {
-    try {
-      const post = await Post.findById(postId);
-      if (!post) return console.log("Post not found!");
-
-      // Get the post owner ID
-      const postOwnerId = post.userId; // assuming userId is the post owner's ID in the Post model
-
-      // Check if user is already liking the post
-      const userLikedPost = post.likes.includes(likedBy);
-
-      if (userLikedPost) {
-        // User unlikes the post
-        await Post.updateOne({ _id: postId }, { $pull: { likes: likedBy } });
-      } else {
-        // User likes the post
-        await Post.updateOne({ _id: postId }, { $push: { likes: likedBy } });
-      }
-
-      // Notify the post owner in real-time (send notification to the post owner)
-      const postOwnerSocketId = userSocketMap[postOwnerId];
-      if (postOwnerSocketId) {
-        io.to(postOwnerSocketId).emit("postLiked", {
-          postId,
-          likedBy,
-          isLiked: !userLikedPost, // Send whether the post is now liked or unliked
-        });
-      }
-    } catch (error) {
-      console.log("Error in likePost:", error.message);
-    }
-  });
-
-  // **Comment on Post Event**
-  socket.on("commentPost", async ({ postId, comment, commentedBy }) => {
-    try {
-      const post = await Post.findById(postId);
-      if (!post) return console.log("Post not found!");
-
-      // Add the comment to the post
-      const newComment = {
-        userId: commentedBy,
-        text: comment,
-        commentAt: new Date(),
-      };
-      await Post.updateOne(
-        { _id: postId },
-        { $push: { comments: newComment } }
-      );
-
-      // Get the post owner ID
-      const postOwnerId = post.userId; // assuming userId is the post owner's ID
-
-      // Notify the post owner in real-time about the new comment
-      const postOwnerSocketId = userSocketMap[postOwnerId];
-      if (postOwnerSocketId) {
-        io.to(postOwnerSocketId).emit("postCommented", {
-          postId,
-          newComment,
-        });
-      }
-    } catch (error) {
-      console.log("Error in commentPost:", error.message);
     }
   });
 

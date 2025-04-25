@@ -1,9 +1,8 @@
 import Post from "../model/post.model.js";
 import User from "../model/user.model.js";
 import { v2 as cloudinary } from "cloudinary";
-import { io, getRecipientSocketId } from "../socketio/socket.js";
-import Notification from "../model/notification.model.js";
 import { createNotification } from "./notification.controller.js";
+import { io } from "../socketio/socket.js";
 // create post
 export const createPost = async (req, res) => {
   try {
@@ -150,10 +149,7 @@ export const likeDislikePost = async (req, res) => {
         `${req.user.username} liked your post`,
         postId
       );
-      const recipientSocketId = getRecipientSocketId(postOwnerId);
-      if (recipientSocketId && postOwnerId !== userId.toString()) {
-        io.to(recipientSocketId).emit("notify", liked_notification);
-      }
+      io.to(postOwnerId).emit("newNotification", liked_notification);
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -184,17 +180,14 @@ export const replyToUser = async (req, res) => {
     await post.save();
 
     const postOwnerId = post.postedBy._id.toString();
-    const commnent_notification = await createNotification(
+    const comment_notification = await createNotification(
       "comment",
       userId,
       postOwnerId,
       `${username} commented on your post ${text}`,
       postId
     );
-    const recipientSocketId = getRecipientSocketId(postOwnerId);
-    if (recipientSocketId && postOwnerId !== userId.toString()) {
-      io.to(recipientSocketId).emit("notify", commnent_notification);
-    }
+    io.to(postOwnerId).emit("newNotification", comment_notification);
     res.status(200).json(reply);
   } catch (error) {
     res.status(500).json({ error: error.message });

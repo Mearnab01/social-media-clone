@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import userAtom from "../atoms/userAtom";
 import io from "socket.io-client";
+import notificationAtom from "../atoms/notificationAtom";
 
 const SocketContext = createContext();
 
@@ -11,10 +12,15 @@ export const useSocket = () => {
 export const SocketContextProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
-  const user = useRecoilValue(userAtom);
+  const setNotifications = useSetRecoilState(notificationAtom);
 
+  const user = useRecoilValue(userAtom);
+  const baseURL =
+    import.meta.env.MODE === "production"
+      ? "/"
+      : import.meta.env.VITE_SOCKET_URL;
   useEffect(() => {
-    const socket = io("/", {
+    const socket = io(baseURL, {
       query: {
         userId: user?._id,
       },
@@ -23,9 +29,15 @@ export const SocketContextProvider = ({ children }) => {
     socket.on("getOnlineUsers", (users) => {
       setOnlineUsers(users);
     });
+    socket.on("error", (err) => {
+      console.log("Socket error:", err);
+    });
+    socket.on("newNotification", (data) => {
+      console.log("📩 New notification received:", data);
+      setNotifications((prev) => [...prev, data]);
+    });
     return () => socket && socket.close();
   }, [user?._id]);
-  //console.log("online user", onlineUsers);
 
   return (
     <SocketContext.Provider value={{ socket, onlineUsers }}>

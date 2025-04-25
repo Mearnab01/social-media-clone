@@ -1,5 +1,6 @@
 import {
   Avatar,
+  Box,
   Button,
   Divider,
   Drawer,
@@ -29,11 +30,17 @@ import {
   UsersIcon,
 } from "lucide-react";
 import useLogOut from "../hooks/useLogOut";
+import notificationAtom from "../atoms/notificationAtom";
 
 const Header = () => {
   const { colorMode, toggleColorMode } = useColorMode();
   const handleLogout = useLogOut();
   const user = useRecoilValue(userAtom);
+  const notification = useRecoilValue(notificationAtom);
+  //console.log(notification, "notification atom");
+  const hasUnread =
+    Array.isArray(notification) && notification.some((n) => n && !n.isRead);
+
   //console.log(user, "mobile header");
   const [isMobileNav] = useMediaQuery("(max-width: 700px)"); // Detect mobile screens
 
@@ -89,12 +96,31 @@ const Header = () => {
                   />
                 </Link>
                 <Link to="/notification">
-                  <IconButton
-                    aria-label="Notifications"
-                    icon={<Bell size={24} />}
-                    variant="ghost"
-                    _hover={{ bg: "gray.200", color: "black", rounded: "full" }}
-                  />
+                  <Box position="relative">
+                    {hasUnread && (
+                      <Box
+                        position="absolute"
+                        top="1px"
+                        right="5px"
+                        w="10px"
+                        h="10px"
+                        bg="red.500"
+                        borderRadius="full"
+                        animation="blink 1s infinite"
+                        zIndex="1"
+                      />
+                    )}
+                    <IconButton
+                      aria-label="Notifications"
+                      icon={<Bell size={24} />}
+                      variant="ghost"
+                      _hover={{
+                        bg: "gray.200",
+                        color: "black",
+                        rounded: "full",
+                      }}
+                    />
+                  </Box>
                 </Link>
                 <Link to={`/followers/${user.username}`}>
                   <IconButton
