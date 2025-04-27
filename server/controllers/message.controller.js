@@ -109,33 +109,34 @@ export const getConversations = async (req, res) => {
   }
 };
 
-//4. delete msg and img from chat
+// 4. Delete message and/or image
 export const deleteMessageAndImage = async (req, res) => {
   try {
-    const { messageId, deleteText, deleteImage } = req.body;
+    const { messageId } = req.body;
     const userId = req.user._id;
+
+    if (!messageId) {
+      return res.status(400).json({ error: "Message ID is required" });
+    }
 
     const message = await Message.findById(messageId);
     if (!message) {
+      console.error("Delete Failed: Message not found in DB");
       return res.status(404).json({ error: "Message not found" });
     }
+
     if (message.sender.toString() !== userId.toString()) {
+      console.error("Delete Failed: Unauthorized attempt");
       return res
         .status(403)
         .json({ error: "You can only delete your own messages" });
     }
-    if (deleteText && message.text) {
-      message.text = ""; // Clear text content
-    }
-    // Handle image deletion
-    if (deleteImage && message.img) {
-      try {
-        // Extract Cloudinary public ID from URL
-        const publicId = message.img.split("/").pop().split(".")[0];
 
-        // Delete image from Cloudinary
-        await cloudinary.v2.uploader.destroy(publicId);
-        message.img = ""; // Clear image URL
+    if (message.img) {
+      try {
+        const publicId = message.img.split("/").pop().split(".")[0];
+        await cloudinary.uploader.destroy(publicId);
+        console.log("Cloudinary: Image deleted successfully");
       } catch (error) {
         console.error("Cloudinary image deletion error:", error);
         return res
@@ -143,15 +144,29 @@ export const deleteMessageAndImage = async (req, res) => {
           .json({ error: "Failed to delete image from Cloudinary" });
       }
     }
-    // If both text and image are empty, delete the entire message
-    if (!message.text && !message.img) {
-      await Message.findByIdAndDelete(messageId);
-      return res.status(200).json({ message: "Message deleted successfully" });
+
+    await Message.findByIdAndDelete(messageId);
+
+    const conversation = await Conversation.findById(message.conversationId);
+    const recipientId = conversation.participants.find(
+      (id) => id.toString() !== userId.toString()
+    );
+
+    const recipientSocketId = getRecipientSocketId(recipientId);
+
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit("messageDeleted", {
+        messageId,
+        deleted: true,
+      });
     }
-    await message.save();
-    res.status(200).json(updatedMessage);
+
+    res.status(200).json({
+      success: true,
+      message: "Message fully and permanently deleted",
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
-    console.log(error);
+    console.error("Error in deleteMessageAndImage:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };

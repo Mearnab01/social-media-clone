@@ -1,137 +1,190 @@
-import { Avatar, Box, Flex, Image, Skeleton, Text } from "@chakra-ui/react";
-import React, { useState } from "react";
+import {
+  Avatar,
+  Box,
+  Flex,
+  Image,
+  Skeleton,
+  Text,
+  useDisclosure,
+  Button,
+  AlertDialog,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
+} from "@chakra-ui/react";
+import React, { useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import userAtom from "../atoms/userAtom";
 import { selectedConversationAtom } from "../atoms/chatAtoms";
-import { CheckCheck, Trash2 } from "lucide-react";
+import { CheckCheck } from "lucide-react";
 import { toast } from "react-hot-toast";
+import axios from "axios";
+
 const Message = ({ ownMessage, message, sendAt }) => {
-  //send from msg container
   const selectedConversation = useRecoilValue(selectedConversationAtom);
   const user = useRecoilValue(userAtom);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const cancelRef = useRef();
+
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      const res = await axios.delete("/api/v1/messages/delete", {
+        data: { messageId: message._id },
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.data.success) {
+        toast.success("Message deleted successfully!");
+      } else {
+        toast.error("Failed to delete message.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response.data.error || "Something went wrong.");
+    } finally {
+      setIsDeleting(false);
+      onClose();
+    }
+  };
+
+  const handleClickMessage = () => {
+    if (ownMessage) {
+      onOpen();
+    }
+  };
+
   return (
     <>
-      {ownMessage ? (
-        <>
-          <Flex flexDir="column" alignSelf="flex-end">
-            {/* me send text msg */}
-            {message.text && (
-              <Flex gap={2} alignItems="center" flexDir={"row"}>
-                <Flex
-                  maxW="400px"
-                  bg="green.600"
-                  p={2}
-                  borderRadius="md"
-                  color="white"
-                  alignItems="center"
-                >
-                  <Text>{message.text}</Text>
-                  <Box
-                    ml={2}
-                    transition="color 0.3s ease-in-out"
-                    color={message.seen ? "blue.400" : "gray.300"}
-                    fontWeight={"bold"}
-                  >
-                    <CheckCheck size={16} />
-                  </Box>
-                </Flex>
-                <Avatar src={user.profilePic} w={7} h={7} />
-              </Flex>
-            )}
-            {/* me send img onload */}
-            {message.img && !imgLoaded && (
-              <Flex mt={5} w={"250px"}>
-                <Image
-                  src={message.img}
-                  hidden
-                  onLoad={() => setImgLoaded(true)}
-                  alt="Message image"
-                  borderRadius={4}
-                />
-                <Skeleton w={"200px"} h={"200px"} />
-              </Flex>
-            )}
-
-            {/* me send img */}
-            {message.img && imgLoaded && (
-              <Flex mt={5} width={"350px"} gap={2} flexDirection={"row"}>
-                <Trash2
-                  size={20}
-                  color="red"
-                  cursor="pointer"
-                  style={{
-                    opacity: isDeleting ? 0.5 : 1,
-                    pointerEvents: isDeleting ? "none" : "auto",
-                  }}
-                />
-                <Box alignItems="center" justifyContent="space-between">
-                  {" "}
-                  <Image
-                    src={message.img}
-                    alt="messgae img"
-                    borderRadius={4}
-                    width="350px"
-                  />
-                </Box>
-                <Avatar src={user.profilePic} w={7} h={7} />
-              </Flex>
-            )}
-          </Flex>
-          <Text fontSize="xs" color="gray.400" textAlign="right" mt={1}>
-            {sendAt ? sendAt : "just now"}
-          </Text>
-        </>
-      ) : (
-        <>
-          <Flex flexDir="column">
-            <Flex gap={2} alignItems="center">
-              <Avatar src={selectedConversation.userProfilePic} w={7} h={7} />
-              {/* msg send to me */}
-              {message.text && (
-                <Text
-                  maxW="350px"
-                  bg="#9e6cfaef"
-                  p={2}
-                  borderRadius="md"
-                  color="white"
-                >
-                  {message.text}
-                </Text>
-              )}
-              {/* img send to me onload */}
-              {message.img && !imgLoaded && (
-                <Flex mt={5} w={"200px"}>
-                  <Image
-                    src={message.img}
-                    hidden
-                    onLoad={() => setImgLoaded(true)}
-                    alt="Message image"
-                    borderRadius={4}
-                  />
-                  <Skeleton w={"200px"} h={"200px"} />
-                </Flex>
-              )}
-              {/* img send to me */}
-              {message.img && imgLoaded && (
-                <Flex mt={5} width={"350px"}>
-                  <Image src={message.img} alt="messgae img" borderRadius={4} />
-                </Flex>
-              )}
+      <Flex
+        flexDir="column"
+        alignSelf={ownMessage ? "flex-end" : "flex-start"}
+        onClick={handleClickMessage}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          handleClickMessage();
+        }}
+      >
+        <Flex gap={2} alignItems="center" flexDir={"row"}>
+          {ownMessage && message.text && (
+            <Flex
+              maxW="400px"
+              bg="green.600"
+              p={2}
+              borderRadius="md"
+              color="white"
+              alignItems="center"
+              position="relative"
+            >
+              <Text>{message.text}</Text>
+              <Box
+                ml={2}
+                color={message.seen ? "blue.400" : "gray.300"}
+                fontWeight="bold"
+              >
+                <CheckCheck size={16} />
+              </Box>
             </Flex>
+          )}
+
+          {/* Render the avatar only when there is text or message img */}
+          {ownMessage && !message.img && (
+            <Avatar src={user.profilePic} w={7} h={7} />
+          )}
+        </Flex>
+
+        {/* Message image */}
+        {ownMessage && message.img && (
+          <Flex mt={5} width={"350px"} gap={2} flexDirection={"row"}>
+            <Box alignItems="center" justifyContent="space-between">
+              <Image
+                src={message.img}
+                alt="message img"
+                borderRadius={4}
+                width="350px"
+                hidden={!imgLoaded}
+                onLoad={() => setImgLoaded(true)}
+              />
+              {!imgLoaded && <Skeleton w={"350px"} h={"200px"} />}
+            </Box>
+            <Avatar src={user.profilePic} w={7} h={7} />
           </Flex>
-          <Text
-            fontSize="xs"
-            color="gray.400"
-            textAlign="left"
-            mt={1}
-            ml="40px"
-          >
-            {sendAt ? sendAt : "just now"}
-          </Text>
-        </>
-      )}
+        )}
+
+        {/* Non-own message */}
+        {!ownMessage && (
+          <Flex gap={2} alignItems="center">
+            <Avatar src={selectedConversation.userProfilePic} w={7} h={7} />
+            {message.text && (
+              <Text
+                maxW="350px"
+                bg="#9e6cfaef"
+                p={2}
+                borderRadius="md"
+                color="white"
+              >
+                {message.text}
+              </Text>
+            )}
+            {message.img && (
+              <Flex mt={5} width={"350px"}>
+                <Image src={message.img} alt="message img" borderRadius={4} />
+              </Flex>
+            )}
+          </Flex>
+        )}
+
+        <Text
+          fontSize="xs"
+          color="gray.400"
+          textAlign={ownMessage ? "right" : "left"}
+          mt={1}
+          ml={ownMessage ? "0" : "40px"}
+        >
+          {sendAt ? sendAt : "just now"}
+        </Text>
+      </Flex>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Delete Message
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Are you sure you want to delete this message? This action cannot
+              be undone.
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                colorScheme="red"
+                onClick={handleDelete}
+                ml={3}
+                isLoading={isDeleting}
+              >
+                Delete
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </>
   );
 };
