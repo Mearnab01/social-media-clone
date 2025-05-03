@@ -13,10 +13,10 @@ import userRoutes from "./routes/user.routes.js";
 import postRoutes from "./routes/post.routes.js";
 import messageRoutes from "./routes/message.routes.js";
 import notificationsRoutes from "./routes/notification.routes.js";
-import job from "./cron/cron.js";
+//import job from "./cron/cron.js";
 
 dotenv.config();
-job.start();
+//job.start();
 //const app = express(); // listen to socket app at very last
 const port = process.env.PORT || 3000;
 const __dirname = path.resolve();
